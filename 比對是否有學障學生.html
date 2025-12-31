@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生名單比對工具</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; padding: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .upload-section { display: flex; flex-direction: column; gap: 20px; margin: 30px 0; }
+        .file-input { border: 2px dashed #bdc3c7; padding: 20px; border-radius: 8px; text-align: center; transition: 0.3s; }
+        .file-input:hover { border-color: #3498db; background: #f0f8ff; }
+        label { font-weight: bold; display: block; margin-bottom: 10px; }
+        button { background-color: #3498db; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; }
+        button:hover { background-color: #2980b9; }
+        #resultArea { margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; color: #2c3e50; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .count { font-size: 1.2em; font-weight: bold; color: #e74c3c; margin-bottom: 10px; }
+        .hint { font-size: 0.9em; color: #7f8c8d; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎓 學生名單比對工具</h2>
+    <p>請上傳以下兩個 Excel 檔案，系統會找出重疊的學生名單。</p>
+    <p class="hint">⚠️ 注意：Excel 中的欄位名稱必須包含<strong>「姓名」</strong>兩字。</p>
+
+    <div class="upload-section">
+        <div class="file-input">
+            <label>1. 原始學生名單檔案：</label>
+            <input type="file" id="fileOriginal" accept=".xlsx, .xls">
+        </div>
+        <div class="file-input">
+            <label>2. 學習障礙學生名單檔案：</label>
+            <input type="file" id="fileSpecial" accept=".xlsx, .xls">
+        </div>
+        <button onclick="compareLists()">開始進行比對</button>
+    </div>
+
+    <div id="resultArea"></div>
+</div>
+
+<script>
+    async function readExcel(file) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                resolve(json);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function findNameKey(obj) {
+        // 自動尋找包含 "姓名" 或 "學生姓名" 的欄位名稱
+        return Object.keys(obj).find(key => key.includes("姓名"));
+    }
+
+    async function compareLists() {
+        const fileA = document.getElementById('fileOriginal').files[0];
+        const fileB = document.getElementById('fileSpecial').files[0];
+
+        if (!fileA || !fileB) {
+            alert("請確保兩個檔案都已選擇！");
+            return;
+        }
+
+        const dataA = await readExcel(fileA);
+        const dataB = await readExcel(fileB);
+
+        if (dataA.length === 0 || dataB.length === 0) {
+            alert("檔案中沒有資料，或格式不正確。");
+            return;
+        }
+
+        // 取得姓名的欄位名稱
+        const nameKeyA = findNameKey(dataA[0]);
+        const nameKeyB = findNameKey(dataB[0]);
+
+        if (!nameKeyA || !nameKeyB) {
+            alert("在 Excel 中找不到名為「姓名」的欄位，請檢查檔案。");
+            return;
+        }
+
+        // 提取名單 (去除空白)
+        const namesB = new Set(dataB.map(item => String(item[nameKeyB]).trim()));
+        
+        // 進行比對
+        const duplicates = dataA.filter(item => namesB.has(String(item[nameKeyA]).trim()));
+
+        displayResults(duplicates, nameKeyA);
+    }
+
+    function displayResults(results, nameKey) {
+        const area = document.getElementById('resultArea');
+        if (results.length === 0) {
+            area.innerHTML = "<p style='color:green;'>✅ 比對完成：原始名單中沒有發現重複的學習障礙學生。</p>";
+            return;
+        }
+
+        let html = `<div class="count">發現 ${results.length} 位符合條件的學生：</div>`;
+        html += `<table><thead><tr><th>序號</th><th>學生姓名</th></tr></thead><tbody>`;
+        
+        results.forEach((student, index) => {
+            html += `<tr><td>${index + 1}</td><td>${student[nameKey]}</td></tr>`;
+        });
+
+        html += `</tbody></table>`;
+        area.innerHTML = html;
+    }
+</script>
+
+</body>
+</html>
