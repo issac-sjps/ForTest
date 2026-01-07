@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>學生電話抓取比對工具</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" v-cloak class="p-4 md:p-8 max-w-6xl mx-auto">
+        
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-extrabold text-slate-800">學生電話抓取比對工具</h1>
+            <p class="text-slate-500 mt-2">適用於註冊組資料比對，純瀏覽器運算，個資不外洩</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+                <div class="flex items-center mb-4">
+                    <div class="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">1</div>
+                    <h2 class="text-lg font-semibold text-blue-900">上傳：學生名單</h2>
+                </div>
+                <p class="text-sm text-gray-500 mb-4">需包含欄位：<span class="font-mono bg-gray-100 px-1">姓名</span>、<span class="font-mono bg-gray-100 px-1">班別</span></p>
+                <input type="file" @change="e => handleFileUpload(e, 'listA')" accept=".xlsx, .xls" 
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                <div v-if="listA.length" class="mt-2 text-xs text-green-600 font-medium">✅ 已讀取 {{ listA.length }} 筆資料</div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
+                <div class="flex items-center mb-4">
+                    <div class="bg-emerald-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">2</div>
+                    <h2 class="text-lg font-semibold text-emerald-900">上傳：家長電話表</h2>
+                </div>
+                <p class="text-sm text-gray-500 mb-4">需包含欄位：<span class="font-mono bg-gray-100 px-1">姓名</span>、<span class="font-mono bg-gray-100 px-1">家長一電話</span>、<span class="font-mono bg-gray-100 px-1">家長二電話</span></p>
+                <input type="file" @change="e => handleFileUpload(e, 'listB')" accept=".xlsx, .xls" 
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
+                <div v-if="listB.length" class="mt-2 text-xs text-green-600 font-medium">✅ 已讀取 {{ listB.length }} 筆資料</div>
+            </div>
+        </div>
+
+        <div class="flex justify-center space-x-4 mb-8">
+            <button @click="compareData" 
+                :disabled="!listA.length || !listB.length"
+                class="bg-slate-800 text-white px-8 py-3 rounded-lg font-bold hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 shadow-lg">
+                執行資料比對
+            </button>
+            
+            <button v-if="results.length" @click="downloadExcel"
+                class="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-700 transition duration-200 shadow-lg flex items-center">
+                <span>下載結果 Excel</span>
+            </button>
+        </div>
+
+        <div v-if="results.length" class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
+            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="font-bold text-gray-700">核對預覽 (前 100 筆)</h3>
+                <span class="text-sm text-gray-500">共 {{ results.length }} 筆</span>
+            </div>
+            <div class="overflow-x-auto max-h-[500px]">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-100 sticky top-0">
+                        <tr>
+                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">班別</th>
+                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">姓名</th>
+                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">家長一電話</th>
+                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">家長二電話</th>
+                            <th class="p-3 text-sm font-semibold text-slate-700 border-b text-center">狀態</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr v-for="(row, idx) in results.slice(0, 100)" :key="idx" class="hover:bg-blue-50 transition">
+                            <td class="p-3 text-sm text-gray-600">{{ row.班別 }}</td>
+                            <td class="p-3 text-sm font-bold text-slate-800">{{ row.姓名 }}</td>
+                            <td class="p-3 text-sm text-blue-600 font-mono">{{ row.家長一電話 || '---' }}</td>
+                            <td class="p-3 text-sm text-blue-600 font-mono">{{ row.家長二電話 || '---' }}</td>
+                            <td class="p-3 text-center">
+                                <span v-if="row.家長一電話 || row.家長二電話" class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">找到資料</span>
+                                <span v-else class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">無資料</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            本工具僅處理資料比對，所有處理均在個人電腦完成，不會上傳至任何雲端空間。
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const listA = ref([]); // 學生名單
+                const listB = ref([]); // 電話庫
+                const results = ref([]);
+
+                // 處理檔案上傳並轉為 JSON
+                const handleFileUpload = (event, target) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        const json = XLSX.utils.sheet_to_json(worksheet);
+                        
+                        if (target === 'listA') listA.value = json;
+                        else listB.value = json;
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+
+                // 比對資料邏輯
+                const compareData = () => {
+                    if (listA.value.length === 0 || listB.value.length === 0) {
+                        alert("請確保兩個檔案都已正確上傳！");
+                        return;
+                    }
+
+                    // 建立 Map 加快搜尋速度，Key 為姓名，處理前後空白
+                    const phoneMap = new Map();
+                    listB.value.forEach(item => {
+                        const name = item['姓名'] ? String(item['姓名']).trim() : null;
+                        if (name) {
+                            phoneMap.set(name, {
+                                p1: item['家長一電話'] || item['電話1'] || item['家長電話'] || '',
+                                p2: item['家長二電話'] || item['電話2'] || ''
+                            });
+                        }
+                    });
+
+                    // 開始比對
+                    results.value = listA.value.map(student => {
+                        const studentName = student['姓名'] ? String(student['姓名']).trim() : '';
+                        const match = phoneMap.get(studentName);
+                        
+                        return {
+                            '班別': student['班別'] || student['班級'] || '',
+                            '姓名': studentName,
+                            '家長一電話': match ? match.p1 : '',
+                            '家長二電話': match ? match.p2 : ''
+                        };
+                    });
+
+                    alert(`比對完成！共處理 ${results.value.length} 筆資料。`);
+                };
+
+                // 下載 Excel
+                const downloadExcel = () => {
+                    const ws = XLSX.utils.json_to_sheet(results.value);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, "比對結果");
+                    
+                    const fileName = `學生電話比對結果_${new Date().getMonth()+1}${new Date().getDate()}.xlsx`;
+                    XLSX.writeFile(wb, fileName);
+                };
+
+                return {
+                    listA, listB, results,
+                    handleFileUpload, compareData, downloadExcel
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
