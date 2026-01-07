@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生電話抓取比對工具</title>
+    <title>學生聯絡資訊比對工具</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -11,76 +11,97 @@
         [v-cloak] { display: none; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="bg-slate-50 min-h-screen text-slate-900">
     <div id="app" v-cloak class="p-4 md:p-8 max-w-6xl mx-auto">
         
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-extrabold text-slate-800">學生電話抓取比對工具</h1>
-            <p class="text-slate-500 mt-2">適用於註冊組資料比對，純瀏覽器運算，個資不外洩</p>
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-black text-slate-800 mb-2">學生電話抓取比對工具</h1>
+            <p class="text-slate-500">快速比對名單與電話，支援依班別分次下載</p>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-blue-100">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition">
                 <div class="flex items-center mb-4">
-                    <div class="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">1</div>
-                    <h2 class="text-lg font-semibold text-blue-900">上傳：學生名單</h2>
+                    <span class="bg-blue-600 text-white w-7 h-7 rounded-full flex items-center justify-center mr-3 text-sm font-bold">1</span>
+                    <h2 class="text-xl font-bold text-blue-900">學生名單 (Excel A)</h2>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">需包含欄位：<span class="font-mono bg-gray-100 px-1">姓名</span>、<span class="font-mono bg-gray-100 px-1">班別</span></p>
+                <p class="text-sm text-slate-400 mb-4 font-medium italic">應包含欄位：姓名、班別</p>
                 <input type="file" @change="e => handleFileUpload(e, 'listA')" accept=".xlsx, .xls" 
-                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                <div v-if="listA.length" class="mt-2 text-xs text-green-600 font-medium">✅ 已讀取 {{ listA.length }} 筆資料</div>
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                <div v-if="listA.length" class="mt-3 py-1 px-3 bg-blue-50 rounded-lg inline-block text-xs text-blue-700 font-bold">已讀取 {{ listA.length }} 位學生</div>
             </div>
 
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-emerald-100">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md transition">
                 <div class="flex items-center mb-4">
-                    <div class="bg-emerald-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">2</div>
-                    <h2 class="text-lg font-semibold text-emerald-900">上傳：家長電話表</h2>
+                    <span class="bg-emerald-600 text-white w-7 h-7 rounded-full flex items-center justify-center mr-3 text-sm font-bold">2</span>
+                    <h2 class="text-xl font-bold text-emerald-900">電話資料 (Excel B)</h2>
                 </div>
-                <p class="text-sm text-gray-500 mb-4">需包含欄位：<span class="font-mono bg-gray-100 px-1">姓名</span>、<span class="font-mono bg-gray-100 px-1">家長一電話</span>、<span class="font-mono bg-gray-100 px-1">家長二電話</span></p>
+                <p class="text-sm text-slate-400 mb-4 font-medium italic">應包含欄位：姓名、家長一行動電話、家長二行動電話</p>
                 <input type="file" @change="e => handleFileUpload(e, 'listB')" accept=".xlsx, .xls" 
-                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
-                <div v-if="listB.length" class="mt-2 text-xs text-green-600 font-medium">✅ 已讀取 {{ listB.length }} 筆資料</div>
+                    class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer" />
+                <div v-if="listB.length" class="mt-3 py-1 px-3 bg-emerald-50 rounded-lg inline-block text-xs text-emerald-700 font-bold">已讀取 {{ listB.length }} 筆聯絡人</div>
             </div>
         </div>
 
-        <div class="flex justify-center space-x-4 mb-8">
-            <button @click="compareData" 
+        <div class="flex flex-col items-center space-y-6 mb-12">
+            <button @click="processMatching" 
                 :disabled="!listA.length || !listB.length"
-                class="bg-slate-800 text-white px-8 py-3 rounded-lg font-bold hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition duration-200 shadow-lg">
-                執行資料比對
+                class="bg-indigo-600 text-white px-12 py-4 rounded-2xl font-black text-lg hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed transition duration-300 shadow-xl shadow-indigo-200">
+                開始自動比對並排序
             </button>
-            
-            <button v-if="results.length" @click="downloadExcel"
-                class="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-700 transition duration-200 shadow-lg flex items-center">
-                <span>下載結果 Excel</span>
-            </button>
+
+            <div v-if="results.length" class="w-full bg-white p-6 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-around gap-4 shadow-sm">
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-slate-400 mb-1">全部匯出</span>
+                    <button @click="downloadAll" class="bg-slate-800 text-white px-6 py-2 rounded-xl hover:bg-slate-900 transition flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        下載所有名單 (.xlsx)
+                    </button>
+                </div>
+
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-slate-400 mb-1">特定班級匯出</span>
+                    <div class="flex space-x-2">
+                        <select v-model="selectedClass" class="border border-slate-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="">選擇班別...</option>
+                            <option v-for="cls in availableClasses" :key="cls" :value="cls">{{ cls }}</option>
+                        </select>
+                        <button @click="downloadSingleClass" :disabled="!selectedClass" class="bg-emerald-600 text-white px-6 py-2 rounded-xl hover:bg-emerald-700 disabled:opacity-50 transition">
+                            下載該班
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div v-if="results.length" class="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-200">
-            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-bold text-gray-700">核對預覽 (前 100 筆)</h3>
-                <span class="text-sm text-gray-500">共 {{ results.length }} 筆</span>
+        <div v-if="results.length" class="bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="p-5 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="font-black text-slate-700">資料預覽 (已依班別排序)</h3>
+                <div class="space-x-4 text-sm font-bold">
+                    <span class="text-green-600">● 成功比對: {{ stats.found }}</span>
+                    <span class="text-red-500">● 缺電話: {{ stats.missing }}</span>
+                </div>
             </div>
-            <div class="overflow-x-auto max-h-[500px]">
+            <div class="overflow-x-auto max-h-[600px]">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-100 sticky top-0">
+                    <thead class="bg-slate-50 sticky top-0 shadow-sm">
                         <tr>
-                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">班別</th>
-                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">姓名</th>
-                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">家長一電話</th>
-                            <th class="p-3 text-sm font-semibold text-slate-700 border-b">家長二電話</th>
-                            <th class="p-3 text-sm font-semibold text-slate-700 border-b text-center">狀態</th>
+                            <th class="p-4 text-xs font-black text-slate-500 border-b uppercase">班別</th>
+                            <th class="p-4 text-xs font-black text-slate-500 border-b uppercase">姓名</th>
+                            <th class="p-4 text-xs font-black text-slate-500 border-b uppercase">家長一行動電話</th>
+                            <th class="p-4 text-xs font-black text-slate-500 border-b uppercase">家長二行動電話</th>
+                            <th class="p-4 text-xs font-black text-slate-500 border-b uppercase text-center">核對</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <tr v-for="(row, idx) in results.slice(0, 100)" :key="idx" class="hover:bg-blue-50 transition">
-                            <td class="p-3 text-sm text-gray-600">{{ row.班別 }}</td>
-                            <td class="p-3 text-sm font-bold text-slate-800">{{ row.姓名 }}</td>
-                            <td class="p-3 text-sm text-blue-600 font-mono">{{ row.家長一電話 || '---' }}</td>
-                            <td class="p-3 text-sm text-blue-600 font-mono">{{ row.家長二電話 || '---' }}</td>
-                            <td class="p-3 text-center">
-                                <span v-if="row.家長一電話 || row.家長二電話" class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 font-medium">找到資料</span>
-                                <span v-else class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700 font-medium">無資料</span>
+                    <tbody class="divide-y divide-slate-100 text-sm">
+                        <tr v-for="(row, idx) in results" :key="idx" class="hover:bg-slate-50 transition">
+                            <td class="p-4 font-bold text-slate-500">{{ row.班別 }}</td>
+                            <td class="p-4 font-bold text-slate-900">{{ row.姓名 }}</td>
+                            <td class="p-4 font-mono text-blue-600 tracking-tighter">{{ row.家長一行動電話 || '-' }}</td>
+                            <td class="p-4 font-mono text-blue-600 tracking-tighter">{{ row.家長二行動電話 || '-' }}</td>
+                            <td class="p-4 text-center">
+                                <span v-if="row.家長一行動電話" class="inline-block w-2 h-2 rounded-full bg-green-500 shadow-sm shadow-green-200"></span>
+                                <span v-else class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
                             </td>
                         </tr>
                     </tbody>
@@ -88,21 +109,22 @@
             </div>
         </div>
 
-        <footer class="mt-12 text-center text-gray-400 text-sm">
-            本工具僅處理資料比對，所有處理均在個人電腦完成，不會上傳至任何雲端空間。
+        <footer class="mt-16 text-center text-slate-400 text-xs">
+            <p>※ 所有運算均在瀏覽器本地完成，個資不離機，安全無虞。</p>
         </footer>
     </div>
 
     <script>
-        const { createApp, ref } = Vue;
+        const { createApp, ref, computed } = Vue;
 
         createApp({
             setup() {
-                const listA = ref([]); // 學生名單
+                const listA = ref([]); // 名單
                 const listB = ref([]); // 電話庫
                 const results = ref([]);
+                const selectedClass = ref("");
 
-                // 處理檔案上傳並轉為 JSON
+                // 檔案讀取
                 const handleFileUpload = (event, target) => {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -111,8 +133,7 @@
                     reader.onload = (e) => {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                         const json = XLSX.utils.sheet_to_json(worksheet);
                         
                         if (target === 'listA') listA.value = json;
@@ -121,54 +142,76 @@
                     reader.readAsArrayBuffer(file);
                 };
 
-                // 比對資料邏輯
-                const compareData = () => {
-                    if (listA.value.length === 0 || listB.value.length === 0) {
-                        alert("請確保兩個檔案都已正確上傳！");
-                        return;
-                    }
-
-                    // 建立 Map 加快搜尋速度，Key 為姓名，處理前後空白
+                // 比對與排序邏輯
+                const processMatching = () => {
                     const phoneMap = new Map();
+                    
+                    // 建立電話字典
                     listB.value.forEach(item => {
                         const name = item['姓名'] ? String(item['姓名']).trim() : null;
                         if (name) {
                             phoneMap.set(name, {
-                                p1: item['家長一電話'] || item['電話1'] || item['家長電話'] || '',
-                                p2: item['家長二電話'] || item['電話2'] || ''
+                                p1: item['家長一行動電話'] || '',
+                                p2: item['家長二行動電話'] || ''
                             });
                         }
                     });
 
-                    // 開始比對
-                    results.value = listA.value.map(student => {
-                        const studentName = student['姓名'] ? String(student['姓名']).trim() : '';
-                        const match = phoneMap.get(studentName);
-                        
+                    // 對應資料
+                    let matched = listA.value.map(student => {
+                        const sName = student['姓名'] ? String(student['姓名']).trim() : '';
+                        const phoneInfo = phoneMap.get(sName);
                         return {
-                            '班別': student['班別'] || student['班級'] || '',
-                            '姓名': studentName,
-                            '家長一電話': match ? match.p1 : '',
-                            '家長二電話': match ? match.p2 : ''
+                            '班別': String(student['班別'] || student['班級'] || '未分類').trim(),
+                            '姓名': sName,
+                            '家長一行動電話': phoneInfo ? phoneInfo.p1 : '',
+                            '家長二行動電話': phoneInfo ? phoneInfo.p2 : ''
                         };
                     });
 
-                    alert(`比對完成！共處理 ${results.value.length} 筆資料。`);
+                    // 依照班別排序 (支援 101, 102 等數字型文字排序)
+                    matched.sort((a, b) => a.班別.localeCompare(b.班別, undefined, { numeric: true, sensitivity: 'base' }));
+                    
+                    results.value = matched;
+                    alert(`比對與排序完成！共 ${matched.length} 筆資料。`);
                 };
 
-                // 下載 Excel
-                const downloadExcel = () => {
-                    const ws = XLSX.utils.json_to_sheet(results.value);
+                // 取得所有唯一的班級名單供下拉選單使用
+                const availableClasses = computed(() => {
+                    const classes = results.value.map(r => r.班別);
+                    return [...new Set(classes)];
+                });
+
+                // 統計數據
+                const stats = computed(() => {
+                    const found = results.value.filter(r => r.家長一行動電話).length;
+                    return {
+                        found,
+                        missing: results.value.length - found
+                    };
+                });
+
+                // 通用匯出函式
+                const exportExcel = (data, suffix) => {
+                    const ws = XLSX.utils.json_to_sheet(data);
                     const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, "比對結果");
-                    
-                    const fileName = `學生電話比對結果_${new Date().getMonth()+1}${new Date().getDate()}.xlsx`;
-                    XLSX.writeFile(wb, fileName);
+                    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+                    const date = new Date().toISOString().slice(0,10);
+                    XLSX.writeFile(wb, `學生電話比對_${suffix}_${date}.xlsx`);
+                };
+
+                const downloadAll = () => exportExcel(results.value, "全部");
+
+                const downloadSingleClass = () => {
+                    if (!selectedClass.value) return;
+                    const filtered = results.value.filter(r => r.班別 === selectedClass.value);
+                    exportExcel(filtered, `${selectedClass.value}班`);
                 };
 
                 return {
-                    listA, listB, results,
-                    handleFileUpload, compareData, downloadExcel
+                    listA, listB, results, selectedClass,
+                    availableClasses, stats,
+                    handleFileUpload, processMatching, downloadAll, downloadSingleClass
                 };
             }
         }).mount('#app');
