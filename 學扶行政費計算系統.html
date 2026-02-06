@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統 (預算預設版)</title>
+    <title>06 學扶經費使用紀錄系統 (自動過濾空行版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -206,7 +206,7 @@
             <h1 class="page-title">💾 備份與還原</h1>
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📥 匯入 Excel 檔案</h3>
-                <p>上傳後，若欄位金額為空，系統將自動填入 0。</p>
+                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行。</p>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="file" id="fileInput" accept=".json, .xlsx, .xls, .csv">
                     <button class="btn btn-primary" onclick="importData()">開始讀取</button>
@@ -238,8 +238,8 @@
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        // 注意：為了套用新預算，我將儲存 Key 改為 schoolFundData_v4
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v4')) || JSON.parse(JSON.stringify(defaultData));
+        // 版本號 v5，確保資料結構一致性
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v5')) || JSON.parse(JSON.stringify(defaultData));
         
         window.onload = function() {
             renderDashboard();
@@ -388,8 +388,7 @@
         }
 
         function saveData() {
-            // 注意：版本號為 v4
-            localStorage.setItem('schoolFundData_v4', JSON.stringify(appData));
+            localStorage.setItem('schoolFundData_v5', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -431,7 +430,7 @@
 
             const reader = new FileReader();
 
-            // 金額安全解析：把空值、怪字都轉成 0
+            // 金額安全解析
             const safeParseMoney = (val) => {
                 if(!val) return 0;
                 const cleanStr = String(val).replace(/[^\d.-]/g, '');
@@ -478,6 +477,8 @@
 
                             const jsonData = XLSX.utils.sheet_to_json(ws, {range: headerRowIndex});
 
+                            // 1. 先映射資料
+                            // 2. 再過濾掉金額全空的行
                             appData.records[periodKey] = jsonData.map(row => {
                                 const getVal = (keyPart) => {
                                     const key = Object.keys(row).find(k => k.replace(/\s/g, '').includes(keyPart));
@@ -491,14 +492,18 @@
                                     claim: safeParseMoney(getVal('請領')), 
                                     cost: safeParseMoney(getVal('消費'))
                                 };
+                            }).filter(record => {
+                                // 核心過濾邏輯：如果「請領」和「消費」都是 0，就丟棄這一行
+                                return record.claim !== 0 || record.cost !== 0;
                             });
+
                             importedCount++;
                         }
                     });
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入資料！`);
+                        alert(`成功匯入資料！(已自動過濾金額為空/0的項目)`);
                         location.reload();
                     } else {
                         alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
