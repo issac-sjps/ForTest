@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統 (v8 排除總計行)</title>
+    <title>06 學扶經費使用紀錄系統 (v9 強力過濾統計行)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -231,7 +231,7 @@
             <h1 class="page-title">💾 備份與還原</h1>
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📥 匯入 Excel 檔案</h3>
-                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行，排除「累計」欄位，並自動過濾「合計/總計」列。</p>
+                <p>系統會自動過濾：1. 金額為0的空行 2. 累計欄位 3. 底部的小計/餘額/總計統計列。</p>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="file" id="fileInput" accept=".json, .xlsx, .xls, .csv">
                     <button class="btn btn-primary" onclick="importData()">開始讀取</button>
@@ -263,8 +263,8 @@
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        // 版本號 v8，加入排除總計行邏輯
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v8')) || JSON.parse(JSON.stringify(defaultData));
+        // 版本號 v9，針對底部統計行進行強力過濾
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v9')) || JSON.parse(JSON.stringify(defaultData));
         
         window.onload = function() {
             renderDashboard();
@@ -414,7 +414,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('schoolFundData_v8', JSON.stringify(appData));
+            localStorage.setItem('schoolFundData_v9', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -461,13 +461,6 @@
                 const cleanStr = String(val).replace(/[^\d.-]/g, '');
                 const num = parseFloat(cleanStr);
                 return isNaN(num) ? 0 : num;
-            };
-
-            // 檢查是否為「總計/合計」列的輔助函數
-            const isTotalRow = (str) => {
-                if(!str) return false;
-                const s = String(str).trim().toLowerCase();
-                return ['合計', '總計', '小計', 'total', 'sum'].some(k => s.includes(k));
             };
 
             if (file.name.endsWith('.json')) {
@@ -517,11 +510,7 @@
                                     return key ? row[key] : '';
                                 };
                                 
-                                // 嘗試抓取「編號」或「序」這類的欄位來輔助判斷是否為總計列
-                                const idVal = Object.keys(row).find(k => k.includes('編號') || k.includes('序')) ? row[Object.keys(row).find(k => k.includes('編號') || k.includes('序'))] : '';
-
                                 return {
-                                    idCol: idVal, // 暫存，僅用於過濾
                                     item: getVal('品項') || '',
                                     target: getVal('班級') || getVal('年級') || '',
                                     person: getVal('教師') || '',
@@ -532,14 +521,16 @@
                                 // 1. 排除金額全空的行
                                 if (record.claim === 0 && record.cost === 0) return false;
                                 
-                                // 2. 排除品項名稱或編號欄位含有「合計/總計」的行 (v8新增)
-                                if (isTotalRow(record.item) || isTotalRow(record.idCol)) return false;
+                                // 2. 關鍵字過濾 (v9新增重點)：檢查所有文字欄位
+                                // 只要出現「小計」、「總計」、「合計」、「餘額」就直接排除
+                                const blacklist = ['小計', '總計', '合計', '餘額', 'Total'];
+                                const allText = (record.item + record.target + record.person).toLowerCase();
+                                
+                                if (blacklist.some(word => allText.includes(word.toLowerCase()))) {
+                                    return false;
+                                }
 
                                 return true;
-                            }).map(r => {
-                                // 移除暫存的 idCol，保持資料結構乾淨
-                                delete r.idCol;
-                                return r;
                             });
 
                             importedCount++;
@@ -548,7 +539,7 @@
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入資料！(已自動排除累計欄位與總計行)`);
+                        alert(`成功匯入資料！(已自動排除統計總和列)`);
                         location.reload();
                     } else {
                         alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
