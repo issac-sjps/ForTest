@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統</title>
+    <title>06 學扶經費使用紀錄系統 (無日期版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -13,7 +13,6 @@
             --text-color: #333;
             --danger-color: #e74c3c;
             --success-color: #27ae60;
-            --border-color: #ddd;
         }
 
         body { font-family: 'Segoe UI', "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); margin: 0; display: flex; height: 100vh; color: var(--text-color); }
@@ -48,7 +47,7 @@
         tr:hover { background-color: #f8f9fa; }
         
         /* 輸入框優化 */
-        input[type="text"], input[type="number"], input[type="date"] {
+        input[type="text"], input[type="number"] {
             width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem;
         }
         input:focus { border-color: var(--accent-color); outline: none; }
@@ -74,7 +73,7 @@
         /* 簽名欄位 (預設隱藏) */
         .col-signature { display: none; }
 
-        /* --- 列印專用樣式 (A4 最佳化) --- */
+        /* --- 列印專用樣式 --- */
         @media print {
             @page { size: A4; margin: 1cm; }
             body { background: white; color: black; display: block; height: auto; font-size: 12pt; }
@@ -82,26 +81,21 @@
             .main-content { padding: 0; margin: 0; overflow: visible; }
             .card { box-shadow: none; border: none; padding: 0; margin-bottom: 20px; }
             
-            /* 標題顯示 */
             h2.page-title { text-align: center; font-size: 18pt; margin: 0 0 20px 0; text-decoration: underline; }
             
-            /* 表格列印優化 */
             .table-container { box-shadow: none; overflow: visible; }
             table { width: 100%; border: 2px solid black; font-size: 11pt; }
             th, td { border: 1px solid black; padding: 6px; color: black; }
             th { background-color: #eee !important; -webkit-print-color-adjust: exact; text-align: center; }
             
-            /* 關鍵：隱藏消費金額，顯示簽名欄 */
+            /* 隱藏消費金額，顯示簽名欄 */
             .col-actual-cost { display: none !important; }
             .col-signature { display: table-cell !important; width: 100px; text-align: center; }
-            .col-date { width: 80px; } /* 日期欄位縮小 */
             
-            /* 輸入框轉純文字 (看起來像列印報表) */
+            /* 輸入框轉純文字 */
             input { border: none; background: transparent; padding: 0; width: auto; font-family: inherit; font-size: inherit; text-align: center; }
-            /* 強制某些欄位靠左或靠右 */
-            td:nth-child(2) input { text-align: left; } /* 品項 */
+            td:nth-child(2) input { text-align: left; } /* 品項靠左 */
             
-            /* 頁尾簽核 */
             .print-footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 12pt; display: block !important; padding-top: 20px; }
         }
         .print-footer { display: none; }
@@ -127,8 +121,7 @@
         
         <div id="dashboard" class="page active">
             <h1 class="page-title">經費使用總覽</h1>
-            <div class="dashboard-grid" id="dashboard-cards">
-                </div>
+            <div class="dashboard-grid" id="dashboard-cards"></div>
             
             <div class="card">
                 <h3>💰 全年度合計</h3>
@@ -176,17 +169,16 @@
                     <thead>
                         <tr>
                             <th width="5%" class="no-print">序</th>
-                            <th width="12%" class="col-date">日期</th>
-                            <th width="20%">品項</th>
+                            <th width="32%">品項 (摘要)</th>
                             <th width="12%">年級/班級</th>
-                            <th width="12%">教師</th>
+                            <th width="12%">教師/對象</th>
                             <th width="10%">請領金額<br><small>(給老師)</small></th>
                             <th width="10%" class="col-actual-cost">消費金額<br><small>(實際)</small></th>
-                            <th width="12%" class="col-signature">簽章</th> <th width="8%" class="no-print">操作</th>
+                            <th width="12%" class="col-signature">簽章</th>
+                            <th width="8%" class="no-print">操作</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
             
@@ -203,80 +195,56 @@
         <div id="settings" class="page">
             <h1 class="page-title">⚙️ 行政費預算設定</h1>
             <div class="card settings-grid">
-                <div class="form-group">
-                    <label>☀️ 暑期 行政費預算</label>
-                    <input type="number" id="set-summer" onchange="updateSettings()">
-                </div>
-                <div class="form-group">
-                    <label>🍂 上學期 行政費預算</label>
-                    <input type="number" id="set-sem1" onchange="updateSettings()">
-                </div>
-                <div class="form-group">
-                    <label>❄️ 寒假 行政費預算</label>
-                    <input type="number" id="set-winter" onchange="updateSettings()">
-                </div>
-                <div class="form-group">
-                    <label>🌱 下學期 行政費預算</label>
-                    <input type="number" id="set-sem2" onchange="updateSettings()">
-                </div>
+                <div class="form-group"><label>☀️ 暑期 預算</label><input type="number" id="set-summer" onchange="updateSettings()"></div>
+                <div class="form-group"><label>🍂 上學期 預算</label><input type="number" id="set-sem1" onchange="updateSettings()"></div>
+                <div class="form-group"><label>❄️ 寒假 預算</label><input type="number" id="set-winter" onchange="updateSettings()"></div>
+                <div class="form-group"><label>🌱 下學期 預算</label><input type="number" id="set-sem2" onchange="updateSettings()"></div>
             </div>
         </div>
 
         <div id="backup" class="page">
             <h1 class="page-title">💾 備份與還原</h1>
-            
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📥 匯入 Excel 檔案</h3>
-                <p>請上傳您記錄的 Excel 檔。系統會自動辨識「暑期、上學期、寒假、下學期」等工作表。</p>
+                <p>上傳後，若欄位金額為空，系統將自動填入 0。</p>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="file" id="fileInput" accept=".json, .xlsx, .xls, .csv">
                     <button class="btn btn-primary" onclick="importData()">開始讀取</button>
                 </div>
             </div>
-
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📤 資料備份</h3>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn btn-success" onclick="exportJSON()">下載 JSON (完整備份)</button>
-                    <button class="btn btn-success" onclick="exportExcel()">下載 Excel (檢視用)</button>
+                    <button class="btn btn-success" onclick="exportJSON()">下載 JSON (推薦)</button>
+                    <button class="btn btn-success" onclick="exportExcel()">下載 Excel</button>
                 </div>
             </div>
-
             <div class="card" style="border-left-color: var(--danger-color);">
                 <h3 style="color: var(--danger-color);">⚠️ 危險區域</h3>
                 <button class="btn btn-danger" onclick="clearAllData()">🗑️ 一鍵清空重製所有資料</button>
             </div>
         </div>
-
     </div>
 
     <script>
-        // 資料結構
         const defaultData = {
             settings: { summer: 0, sem1: 0, winter: 0, sem2: 0 },
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v2')) || JSON.parse(JSON.stringify(defaultData));
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v3')) || JSON.parse(JSON.stringify(defaultData));
         
-        // 頁面載入初始化
         window.onload = function() {
             renderDashboard();
             loadSettings();
             renderAllPeriods();
         };
 
-        // 導航切換
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             
-            const btnMap = {'dashboard':0, 'summer':1, 'sem1':2, 'winter':3, 'sem2':4, 'settings':5, 'backup':6};
-            const btnIndex = Object.keys(btnMap).indexOf(pageId);
-            
-            // 修正按鈕對應 (因為有 footer)
             const btns = document.querySelectorAll('.nav-btn');
-            // 簡單對應邏輯
             btns.forEach(btn => {
                 if(btn.getAttribute('onclick').includes(pageId)) btn.classList.add('active');
             });
@@ -290,13 +258,11 @@
             }
         }
 
-        // 渲染儀表板
         function renderDashboard() {
             const periods = [
                 {k:'summer', name:'☀️ 暑期'}, {k:'sem1', name:'🍂 上學期'},
                 {k:'winter', name:'❄️ 寒假'}, {k:'sem2', name:'🌱 下學期'}
             ];
-            
             let html = '';
             let totalB = 0, totalClaim = 0, totalCost = 0;
 
@@ -327,7 +293,6 @@
             document.getElementById('total-balance').innerText = `$${(totalB - totalCost).toLocaleString()}`;
         }
 
-        // 渲染各期明細
         function renderPeriodPage(period) {
             const container = document.getElementById(period);
             const template = document.getElementById('period-template').innerHTML;
@@ -335,14 +300,11 @@
             
             if(!container.innerHTML) {
                 container.innerHTML = template;
-                // 設定按鈕事件
                 container.querySelector('.btn-primary').onclick = () => addItem(period);
             }
 
-            // 更新標題 (含列印標題)
             container.querySelectorAll('.page-title').forEach(el => el.innerText = titles[period] + " 行政費用印領清冊");
 
-            // 計算統計
             const budget = parseFloat(appData.settings[period]) || 0;
             const records = appData.records[period];
             const claim = records.reduce((s, r) => s + (parseFloat(r.claim)||0), 0);
@@ -353,14 +315,12 @@
             container.querySelector('.p-cost').innerText = cost.toLocaleString();
             container.querySelector('.p-balance').innerText = (budget - cost).toLocaleString();
 
-            // 渲染表格內容
             const tbody = container.querySelector('tbody');
             tbody.innerHTML = '';
             records.forEach((r, index) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="no-print">${index + 1}</td>
-                    <td><input type="text" value="${r.date||''}" placeholder="日期" onchange="updateRecord('${period}', ${index}, 'date', this.value)"></td>
                     <td><input type="text" value="${r.item||''}" placeholder="輸入摘要" onchange="updateRecord('${period}', ${index}, 'item', this.value)"></td>
                     <td><input type="text" value="${r.target||''}" placeholder="班級" onchange="updateRecord('${period}', ${index}, 'target', this.value)"></td>
                     <td><input type="text" value="${r.person||''}" placeholder="教師姓名" onchange="updateRecord('${period}', ${index}, 'person', this.value)"></td>
@@ -377,11 +337,8 @@
             ['summer', 'sem1', 'winter', 'sem2'].forEach(p => renderPeriodPage(p));
         }
 
-        // 資料 CRUD
         function addItem(period) {
-            appData.records[period].push({
-                date: '', item: '', target: '', person: '', claim: 0, cost: 0
-            });
+            appData.records[period].push({ item: '', target: '', person: '', claim: 0, cost: 0 });
             saveData();
             renderPeriodPage(period);
         }
@@ -389,12 +346,11 @@
         function updateRecord(period, index, field, value) {
             appData.records[period][index][field] = value;
             saveData();
-            // 更新上方統計列數字
+            // 簡易刷新統計
             const budget = parseFloat(appData.settings[period]) || 0;
             const records = appData.records[period];
             const claim = records.reduce((s, r) => s + (parseFloat(r.claim)||0), 0);
             const cost = records.reduce((s, r) => s + (parseFloat(r.cost)||0), 0);
-            
             const container = document.getElementById(period);
             container.querySelector('.p-claim').innerText = claim.toLocaleString();
             container.querySelector('.p-cost').innerText = cost.toLocaleString();
@@ -409,7 +365,6 @@
             }
         }
 
-        // 設定
         function loadSettings() {
             document.getElementById('set-summer').value = appData.settings.summer;
             document.getElementById('set-sem1').value = appData.settings.sem1;
@@ -426,7 +381,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('schoolFundData_v2', JSON.stringify(appData));
+            localStorage.setItem('schoolFundData_v3', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -437,7 +392,6 @@
             }
         }
 
-        // 匯出功能
         function exportJSON() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
             const node = document.createElement('a');
@@ -450,7 +404,6 @@
             const wb = XLSX.utils.book_new();
             ['summer', 'sem1', 'winter', 'sem2'].forEach(p => {
                 const sheetData = appData.records[p].map(r => ({
-                    "日期": r.date,
                     "品項": r.item,
                     "年級/班級": r.target,
                     "教師": r.person,
@@ -463,13 +416,21 @@
             XLSX.writeFile(wb, "學扶經費紀錄.xlsx");
         }
 
-        // 匯入邏輯 (增強版，適應你的檔案格式)
         function importData() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             if (!file) { alert('請選擇檔案'); return; }
 
             const reader = new FileReader();
+
+            // 金額安全解析函數：把空值、怪字都轉成 0
+            const safeParseMoney = (val) => {
+                if(!val) return 0;
+                // 移除可能的千分位逗號或文字
+                const cleanStr = String(val).replace(/[^\d.-]/g, '');
+                const num = parseFloat(cleanStr);
+                return isNaN(num) ? 0 : num;
+            };
 
             if (file.name.endsWith('.json')) {
                 reader.onload = function(e) {
@@ -482,18 +443,14 @@
                 };
                 reader.readAsText(file);
             } else {
-                // Excel/CSV 處理
                 reader.onload = function(e) {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     
                     let importedCount = 0;
-                    
-                    // 關鍵字映射
                     const sheetMap = { '暑': 'summer', '上': 'sem1', '寒': 'winter', '下': 'sem2' };
 
                     workbook.SheetNames.forEach(sheetName => {
-                        // 判斷屬於哪個學期
                         let periodKey = null;
                         for(let k in sheetMap) {
                             if(sheetName.includes(k)) periodKey = sheetMap[k];
@@ -501,36 +458,32 @@
 
                         if(periodKey) {
                             const ws = workbook.Sheets[sheetName];
-                            // 轉成 Array of Arrays 以便找表頭
                             const rows = XLSX.utils.sheet_to_json(ws, {header: 1});
                             
-                            // 尋找表頭所在的列 (找含有 "編號" 或 "品項" 的那一列)
+                            // 找表頭列
                             let headerRowIndex = 0;
                             rows.forEach((row, idx) => {
                                 const rowStr = JSON.stringify(row);
-                                if(rowStr.includes('編號') && rowStr.includes('品項')) {
+                                if(rowStr.includes('品項') && (rowStr.includes('消費') || rowStr.includes('金額'))) {
                                     headerRowIndex = idx;
                                 }
                             });
 
-                            // 從表頭列開始讀取資料
                             const jsonData = XLSX.utils.sheet_to_json(ws, {range: headerRowIndex});
 
-                            // 轉換資料 (處理特殊換行欄位名稱)
                             appData.records[periodKey] = jsonData.map(row => {
-                                // 模糊匹配欄位名稱 (移除換行與空白)
                                 const getVal = (keyPart) => {
                                     const key = Object.keys(row).find(k => k.replace(/\s/g, '').includes(keyPart));
                                     return key ? row[key] : '';
                                 };
 
                                 return {
-                                    date: getVal('日期') || '',
                                     item: getVal('品項') || '',
                                     target: getVal('班級') || getVal('年級') || '',
                                     person: getVal('教師') || '',
-                                    claim: parseFloat(getVal('請領')) || 0, // 抓 "請領金額"
-                                    cost: parseFloat(getVal('消費')) || 0   // 抓 "消費金額"
+                                    // 這裡套用安全解析，如果是空的就給 0
+                                    claim: safeParseMoney(getVal('請領')), 
+                                    cost: safeParseMoney(getVal('消費'))
                                 };
                             });
                             importedCount++;
@@ -539,10 +492,10 @@
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入 ${importedCount} 個工作表的資料！`);
+                        alert(`成功匯入資料！(空值已自動補 0)`);
                         location.reload();
                     } else {
-                        alert('無法識別工作表名稱，請確認名稱包含「暑」、「上」、「寒」、「下」。');
+                        alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
                     }
                 };
                 reader.readAsArrayBuffer(file);
