@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統 (自動過濾空行版)</title>
+    <title>06 學扶經費使用紀錄系統 (排除累計欄位修正版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -13,6 +13,7 @@
             --text-color: #333;
             --danger-color: #e74c3c;
             --success-color: #27ae60;
+            --warning-color: #f39c12;
         }
 
         body { font-family: 'Segoe UI', "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); margin: 0; display: flex; height: 100vh; color: var(--text-color); }
@@ -67,8 +68,9 @@
         label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--primary-color); }
 
         /* 統計列 */
-        .summary-bar { display: flex; gap: 20px; background: #eaf2f8; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; flex-wrap: wrap; }
-        .summary-item b { color: var(--primary-color); }
+        .summary-bar { display: flex; align-items: center; gap: 15px; background: #eaf2f8; padding: 15px; border-radius: 8px; border-left: 5px solid var(--primary-color); margin-bottom: 20px; flex-wrap: wrap; }
+        .summary-group { display: flex; align-items: center; gap: 5px; background: white; padding: 5px 10px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .math-symbol { color: #7f8c8d; font-weight: bold; font-size: 1.2rem; }
 
         /* 簽名欄位 (預設隱藏) */
         .col-signature { display: none; }
@@ -124,23 +126,30 @@
             <div class="dashboard-grid" id="dashboard-cards"></div>
             
             <div class="card">
-                <h3>💰 全年度合計</h3>
+                <h3>💰 全年度合計 (餘額 = 預算 - 實際消費)</h3>
                 <div style="display:flex; justify-content:space-around; flex-wrap:wrap; padding: 15px 0;">
                     <div style="text-align:center; padding:10px;">
                         <span style="color:#7f8c8d;">總行政費預算</span><br>
                         <span id="total-budget" class="value">0</span>
                     </div>
                     <div style="text-align:center; padding:10px;">
-                        <span style="color:#7f8c8d;">總請領金額 (發出)</span><br>
-                        <span id="total-claim" class="value" style="color:var(--accent-color)">0</span>
+                        <span style="color:#2c3e50; font-weight:bold;">-</span>
                     </div>
                     <div style="text-align:center; padding:10px;">
-                        <span style="color:#7f8c8d;">總實際消費</span><br>
+                        <span style="color:#7f8c8d;">總實際消費 (扣款)</span><br>
                         <span id="total-cost" class="value" style="color:var(--danger-color)">0</span>
+                    </div>
+                    <div style="text-align:center; padding:10px;">
+                        <span style="color:#2c3e50; font-weight:bold;">=</span>
                     </div>
                     <div style="text-align:center; padding:10px;">
                         <span style="color:#7f8c8d;">總剩餘經費</span><br>
                         <span id="total-balance" class="value" style="color:var(--success-color)">0</span>
+                    </div>
+                    <div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
+                    <div style="text-align:center; padding:10px; opacity: 0.7;">
+                        <span style="color:#7f8c8d;">總請領金額 (參考)</span><br>
+                        <span id="total-claim" class="value" style="color:var(--accent-color); font-size: 1.4rem;">0</span>
                     </div>
                 </div>
             </div>
@@ -158,10 +167,26 @@
             <h2 class="page-title" style="display:none; display: block;"></h2>
 
             <div class="summary-bar no-print">
-                <span class="summary-item">預算：$<span class="p-budget">0</span></span>
-                <span class="summary-item">已請領(給老師)：$<span class="p-claim">0</span></span>
-                <span class="summary-item" style="color:var(--danger-color)">實際消費：$<span class="p-cost">0</span></span>
-                <span class="summary-item" style="color:var(--success-color)">剩餘：$<span class="p-balance">0</span></span>
+                <div class="summary-group">
+                    <span style="color:#7f8c8d">預算</span>
+                    <b style="font-size:1.1rem">$<span class="p-budget">0</span></b>
+                </div>
+                <span class="math-symbol">-</span>
+                <div class="summary-group" style="border-left: 3px solid var(--danger-color);">
+                    <span style="color:var(--danger-color)">實際消費</span>
+                    <b style="color:var(--danger-color); font-size:1.1rem">$<span class="p-cost">0</span></b>
+                </div>
+                <span class="math-symbol">=</span>
+                <div class="summary-group" style="border-left: 3px solid var(--success-color);">
+                    <span style="color:var(--success-color)">剩餘</span>
+                    <b style="color:var(--success-color); font-size:1.2rem">$<span class="p-balance">0</span></b>
+                </div>
+                
+                <div style="flex:1"></div>
+                
+                <div class="summary-group" style="background:none; box-shadow:none; opacity:0.8;">
+                    <span style="color:#7f8c8d">(參考：已請領 $<span class="p-claim">0</span>)</span>
+                </div>
             </div>
 
             <div class="table-container">
@@ -172,8 +197,8 @@
                             <th width="32%">品項 (摘要)</th>
                             <th width="12%">年級/班級</th>
                             <th width="12%">教師/對象</th>
-                            <th width="10%">請領金額<br><small>(給老師)</small></th>
-                            <th width="10%" class="col-actual-cost">消費金額<br><small>(實際)</small></th>
+                            <th width="10%" style="background-color: #95a5a6;">請領金額<br><small>(參考/給老師)</small></th>
+                            <th width="10%" class="col-actual-cost" style="background-color: #c0392b;">消費金額<br><small>(實際扣款)</small></th>
                             <th width="12%" class="col-signature">簽章</th>
                             <th width="8%" class="no-print">操作</th>
                         </tr>
@@ -206,7 +231,7 @@
             <h1 class="page-title">💾 備份與還原</h1>
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📥 匯入 Excel 檔案</h3>
-                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行。</p>
+                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行，並排除「累計」欄位。</p>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="file" id="fileInput" accept=".json, .xlsx, .xls, .csv">
                     <button class="btn btn-primary" onclick="importData()">開始讀取</button>
@@ -227,7 +252,7 @@
     </div>
 
     <script>
-        // --- 預設資料設定 (已填入你的預算) ---
+        // --- 預設資料設定 ---
         const defaultData = {
             settings: { 
                 summer: 28800, 
@@ -238,8 +263,8 @@
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        // 版本號 v5，確保資料結構一致性
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v5')) || JSON.parse(JSON.stringify(defaultData));
+        // 版本號 v7，更新匯入邏輯
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v7')) || JSON.parse(JSON.stringify(defaultData));
         
         window.onload = function() {
             renderDashboard();
@@ -278,6 +303,8 @@
                 const recs = appData.records[p.k];
                 const claim = recs.reduce((sum, r) => sum + (parseFloat(r.claim)||0), 0);
                 const cost = recs.reduce((sum, r) => sum + (parseFloat(r.cost)||0), 0);
+                
+                // 餘額 = 預算 - 實際消費
                 const bal = budget - cost;
 
                 totalB += budget; totalClaim += claim; totalCost += cost;
@@ -287,8 +314,8 @@
                     <h3>${p.name} <span style="font-size:0.8rem">預算 $${budget.toLocaleString()}</span></h3>
                     <div class="value">$${cost.toLocaleString()}</div>
                     <div class="sub-info">
-                        <span>請領: $${claim.toLocaleString()}</span>
                         <span style="color:${bal >= 0 ? 'green':'red'}">剩餘: $${bal.toLocaleString()}</span>
+                        <span style="color:#aaa;">(請領: $${claim.toLocaleString()})</span>
                     </div>
                 </div>`;
             });
@@ -320,6 +347,8 @@
             container.querySelector('.p-budget').innerText = budget.toLocaleString();
             container.querySelector('.p-claim').innerText = claim.toLocaleString();
             container.querySelector('.p-cost').innerText = cost.toLocaleString();
+            
+            // 核心計算：餘額 = 預算 - 實際消費
             container.querySelector('.p-balance').innerText = (budget - cost).toLocaleString();
 
             const tbody = container.querySelector('tbody');
@@ -331,8 +360,8 @@
                     <td><input type="text" value="${r.item||''}" placeholder="輸入摘要" onchange="updateRecord('${period}', ${index}, 'item', this.value)"></td>
                     <td><input type="text" value="${r.target||''}" placeholder="班級" onchange="updateRecord('${period}', ${index}, 'target', this.value)"></td>
                     <td><input type="text" value="${r.person||''}" placeholder="教師姓名" onchange="updateRecord('${period}', ${index}, 'person', this.value)"></td>
-                    <td><input type="number" value="${r.claim}" onchange="updateRecord('${period}', ${index}, 'claim', this.value)"></td>
-                    <td class="col-actual-cost"><input type="number" value="${r.cost}" style="color:var(--danger-color)" onchange="updateRecord('${period}', ${index}, 'cost', this.value)"></td>
+                    <td><input type="number" value="${r.claim}" style="color:#7f8c8d;" onchange="updateRecord('${period}', ${index}, 'claim', this.value)"></td>
+                    <td class="col-actual-cost"><input type="number" value="${r.cost}" style="color:var(--danger-color); font-weight:bold;" onchange="updateRecord('${period}', ${index}, 'cost', this.value)"></td>
                     <td class="col-signature"></td>
                     <td class="no-print"><button class="btn btn-danger" style="padding:4px 8px;" onclick="deleteRecord('${period}', ${index})">×</button></td>
                 `;
@@ -388,7 +417,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('schoolFundData_v5', JSON.stringify(appData));
+            localStorage.setItem('schoolFundData_v7', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -477,11 +506,15 @@
 
                             const jsonData = XLSX.utils.sheet_to_json(ws, {range: headerRowIndex});
 
-                            // 1. 先映射資料
-                            // 2. 再過濾掉金額全空的行
+                            // 1. 映射資料
+                            // 2. 過濾掉金額全空的行
                             appData.records[periodKey] = jsonData.map(row => {
                                 const getVal = (keyPart) => {
-                                    const key = Object.keys(row).find(k => k.replace(/\s/g, '').includes(keyPart));
+                                    // 修正邏輯：必須包含 keyPart 且 不能包含 "累計"
+                                    const key = Object.keys(row).find(k => {
+                                        const cleanK = k.replace(/\s/g, ''); // 去除空白/換行
+                                        return cleanK.includes(keyPart) && !cleanK.includes('累計');
+                                    });
                                     return key ? row[key] : '';
                                 };
 
@@ -493,7 +526,7 @@
                                     cost: safeParseMoney(getVal('消費'))
                                 };
                             }).filter(record => {
-                                // 核心過濾邏輯：如果「請領」和「消費」都是 0，就丟棄這一行
+                                // 過濾：如果「請領」和「消費」都是 0，就丟棄
                                 return record.claim !== 0 || record.cost !== 0;
                             });
 
@@ -503,7 +536,7 @@
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入資料！(已自動過濾金額為空/0的項目)`);
+                        alert(`成功匯入資料！(已自動過濾累計欄位)`);
                         location.reload();
                     } else {
                         alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
