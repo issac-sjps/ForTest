@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統 (無日期版)</title>
+    <title>06 學扶經費使用紀錄系統 (預算預設版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -227,12 +227,19 @@
     </div>
 
     <script>
+        // --- 預設資料設定 (已填入你的預算) ---
         const defaultData = {
-            settings: { summer: 0, sem1: 0, winter: 0, sem2: 0 },
+            settings: { 
+                summer: 28800, 
+                sem1: 24640, 
+                winter: 12800, 
+                sem2: 18320 
+            },
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v3')) || JSON.parse(JSON.stringify(defaultData));
+        // 注意：為了套用新預算，我將儲存 Key 改為 schoolFundData_v4
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v4')) || JSON.parse(JSON.stringify(defaultData));
         
         window.onload = function() {
             renderDashboard();
@@ -381,7 +388,8 @@
         }
 
         function saveData() {
-            localStorage.setItem('schoolFundData_v3', JSON.stringify(appData));
+            // 注意：版本號為 v4
+            localStorage.setItem('schoolFundData_v4', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -423,10 +431,9 @@
 
             const reader = new FileReader();
 
-            // 金額安全解析函數：把空值、怪字都轉成 0
+            // 金額安全解析：把空值、怪字都轉成 0
             const safeParseMoney = (val) => {
                 if(!val) return 0;
-                // 移除可能的千分位逗號或文字
                 const cleanStr = String(val).replace(/[^\d.-]/g, '');
                 const num = parseFloat(cleanStr);
                 return isNaN(num) ? 0 : num;
@@ -481,7 +488,6 @@
                                     item: getVal('品項') || '',
                                     target: getVal('班級') || getVal('年級') || '',
                                     person: getVal('教師') || '',
-                                    // 這裡套用安全解析，如果是空的就給 0
                                     claim: safeParseMoney(getVal('請領')), 
                                     cost: safeParseMoney(getVal('消費'))
                                 };
@@ -492,7 +498,7 @@
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入資料！(空值已自動補 0)`);
+                        alert(`成功匯入資料！`);
                         location.reload();
                     } else {
                         alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
