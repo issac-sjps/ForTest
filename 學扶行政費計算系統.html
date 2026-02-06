@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>06 學扶經費使用紀錄系統 (排除累計欄位修正版)</title>
+    <title>06 學扶經費使用紀錄系統 (v8 排除總計行)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -231,7 +231,7 @@
             <h1 class="page-title">💾 備份與還原</h1>
             <div class="card" style="margin-bottom: 20px;">
                 <h3>📥 匯入 Excel 檔案</h3>
-                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行，並排除「累計」欄位。</p>
+                <p>系統會自動忽略「請領」與「消費」金額皆為 0 的空行，排除「累計」欄位，並自動過濾「合計/總計」列。</p>
                 <div style="display:flex; gap:10px; align-items:center;">
                     <input type="file" id="fileInput" accept=".json, .xlsx, .xls, .csv">
                     <button class="btn btn-primary" onclick="importData()">開始讀取</button>
@@ -263,8 +263,8 @@
             records: { summer: [], sem1: [], winter: [], sem2: [] }
         };
 
-        // 版本號 v7，更新匯入邏輯
-        let appData = JSON.parse(localStorage.getItem('schoolFundData_v7')) || JSON.parse(JSON.stringify(defaultData));
+        // 版本號 v8，加入排除總計行邏輯
+        let appData = JSON.parse(localStorage.getItem('schoolFundData_v8')) || JSON.parse(JSON.stringify(defaultData));
         
         window.onload = function() {
             renderDashboard();
@@ -304,7 +304,6 @@
                 const claim = recs.reduce((sum, r) => sum + (parseFloat(r.claim)||0), 0);
                 const cost = recs.reduce((sum, r) => sum + (parseFloat(r.cost)||0), 0);
                 
-                // 餘額 = 預算 - 實際消費
                 const bal = budget - cost;
 
                 totalB += budget; totalClaim += claim; totalCost += cost;
@@ -348,7 +347,6 @@
             container.querySelector('.p-claim').innerText = claim.toLocaleString();
             container.querySelector('.p-cost').innerText = cost.toLocaleString();
             
-            // 核心計算：餘額 = 預算 - 實際消費
             container.querySelector('.p-balance').innerText = (budget - cost).toLocaleString();
 
             const tbody = container.querySelector('tbody');
@@ -382,7 +380,6 @@
         function updateRecord(period, index, field, value) {
             appData.records[period][index][field] = value;
             saveData();
-            // 簡易刷新統計
             const budget = parseFloat(appData.settings[period]) || 0;
             const records = appData.records[period];
             const claim = records.reduce((s, r) => s + (parseFloat(r.claim)||0), 0);
@@ -417,7 +414,7 @@
         }
 
         function saveData() {
-            localStorage.setItem('schoolFundData_v7', JSON.stringify(appData));
+            localStorage.setItem('schoolFundData_v8', JSON.stringify(appData));
         }
 
         function clearAllData() {
@@ -459,12 +456,18 @@
 
             const reader = new FileReader();
 
-            // 金額安全解析
             const safeParseMoney = (val) => {
                 if(!val) return 0;
                 const cleanStr = String(val).replace(/[^\d.-]/g, '');
                 const num = parseFloat(cleanStr);
                 return isNaN(num) ? 0 : num;
+            };
+
+            // 檢查是否為「總計/合計」列的輔助函數
+            const isTotalRow = (str) => {
+                if(!str) return false;
+                const s = String(str).trim().toLowerCase();
+                return ['合計', '總計', '小計', 'total', 'sum'].some(k => s.includes(k));
             };
 
             if (file.name.endsWith('.json')) {
@@ -495,7 +498,6 @@
                             const ws = workbook.Sheets[sheetName];
                             const rows = XLSX.utils.sheet_to_json(ws, {header: 1});
                             
-                            // 找表頭列
                             let headerRowIndex = 0;
                             rows.forEach((row, idx) => {
                                 const rowStr = JSON.stringify(row);
@@ -506,19 +508,20 @@
 
                             const jsonData = XLSX.utils.sheet_to_json(ws, {range: headerRowIndex});
 
-                            // 1. 映射資料
-                            // 2. 過濾掉金額全空的行
                             appData.records[periodKey] = jsonData.map(row => {
                                 const getVal = (keyPart) => {
-                                    // 修正邏輯：必須包含 keyPart 且 不能包含 "累計"
                                     const key = Object.keys(row).find(k => {
-                                        const cleanK = k.replace(/\s/g, ''); // 去除空白/換行
+                                        const cleanK = k.replace(/\s/g, ''); 
                                         return cleanK.includes(keyPart) && !cleanK.includes('累計');
                                     });
                                     return key ? row[key] : '';
                                 };
+                                
+                                // 嘗試抓取「編號」或「序」這類的欄位來輔助判斷是否為總計列
+                                const idVal = Object.keys(row).find(k => k.includes('編號') || k.includes('序')) ? row[Object.keys(row).find(k => k.includes('編號') || k.includes('序'))] : '';
 
                                 return {
+                                    idCol: idVal, // 暫存，僅用於過濾
                                     item: getVal('品項') || '',
                                     target: getVal('班級') || getVal('年級') || '',
                                     person: getVal('教師') || '',
@@ -526,8 +529,17 @@
                                     cost: safeParseMoney(getVal('消費'))
                                 };
                             }).filter(record => {
-                                // 過濾：如果「請領」和「消費」都是 0，就丟棄
-                                return record.claim !== 0 || record.cost !== 0;
+                                // 1. 排除金額全空的行
+                                if (record.claim === 0 && record.cost === 0) return false;
+                                
+                                // 2. 排除品項名稱或編號欄位含有「合計/總計」的行 (v8新增)
+                                if (isTotalRow(record.item) || isTotalRow(record.idCol)) return false;
+
+                                return true;
+                            }).map(r => {
+                                // 移除暫存的 idCol，保持資料結構乾淨
+                                delete r.idCol;
+                                return r;
                             });
 
                             importedCount++;
@@ -536,7 +548,7 @@
 
                     if(importedCount > 0) {
                         saveData();
-                        alert(`成功匯入資料！(已自動過濾累計欄位)`);
+                        alert(`成功匯入資料！(已自動排除累計欄位與總計行)`);
                         location.reload();
                     } else {
                         alert('無法識別工作表，請確認包含 暑/上/寒/下 關鍵字。');
